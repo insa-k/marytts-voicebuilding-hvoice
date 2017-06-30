@@ -1,0 +1,5 @@
+plugins {
+    id 'groovy'
+}
+
+apply plugin: 'marytts-kaldi-mfa'
