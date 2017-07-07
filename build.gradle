@@ -12,7 +12,6 @@ plugins {
     id 'de.dfki.mary.voicebuilding-legacy' version '5.2.0'
 }
 
-apply plugin: 'marytts-kaldi-mfa'
 
 configurations.all {
     resolutionStrategy.eachDependency { DependencyResolveDetails details ->
@@ -61,13 +60,6 @@ task remapLabels(type: Copy) {
         fields.join(' ')
     }
 }
-
-
-/*
-runForcedAlignment {
-    dependsOn convertTextToMaryXml, prepareForcedAlignment
-}
-*/
 
 legacyInit {
     dependsOn convertTextGrids, remapLabels
