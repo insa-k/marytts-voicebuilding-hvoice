@@ -1,5 +1,74 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "de.dfki.mary:marytts-client:5.2"
+    }
+}
+
 plugins {
     id 'groovy'
+    id 'de.dfki.mary.voicebuilding-legacy' version '5.2.0'
 }
 
 apply plugin: 'marytts-kaldi-mfa'
+
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+        if (details.requested.name == 'groovy-all') {
+            details.useTarget group: details.requested.group, name: details.requested.name, version: '2.4.7'
+        }
+    }
+}
+
+convertTextToMaryXml {
+    srcDir = file("$buildDir/text")
+}
+task convertTextGrids {
+    ext.labDir = file("$buildDir/lab_old")
+    outputs.dir labDir
+    doLast {
+        labDir.mkdirs()
+        def scriptFile = file("$temporaryDir/script.praat")
+        scriptFile.withWriter { script ->
+            fileTree(buildDir).include('TextGrid/*.TextGrid').each { textGridFile ->
+                def labFile = file("$labDir/${textGridFile.name - 'TextGrid' + 'lab'}")
+                script.println "Read from file... $textGridFile"
+                script.println "Extract tier... 2"
+                script.println "Save as Xwaves label file... $labFile"
+                script.println "printline Wrote $labFile.name"
+            }
+        }
+        exec {
+            commandLine 'praat', '--run', scriptFile
+        }
+    }
+}
+
+task remapLabels(type: Copy) {
+    from convertTextGrids.labDir
+    into "$buildDir/lab"
+    dependsOn convertTextGrids
+    filter {
+        def phoneMapping = [
+                'sil': '_',
+        ]
+        def fields = it.tokenize()
+        if (fields.size() == 3) {
+            fields[-1] = phoneMapping[fields[-1]] ?: fields[-1]
+        }
+        fields.join(' ')
+    }
+}
+
+
+/*
+runForcedAlignment {
+    dependsOn convertTextToMaryXml, prepareForcedAlignment
+}
+*/
+
+legacyInit {
+    dependsOn convertTextGrids, remapLabels
+}
