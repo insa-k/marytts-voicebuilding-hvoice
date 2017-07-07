@@ -10,6 +10,8 @@ buildscript {
 plugins {
     id 'groovy'
     id 'de.dfki.mary.voicebuilding-legacy' version '5.2.0'
+    id 'de.undercouch.download' version '3.2.0'
+
 }
 
 
@@ -21,9 +23,49 @@ configurations.all {
     }
 }
 
-convertTextToMaryXml {
-    srcDir = file("$buildDir/text")
+import de.undercouch.gradle.tasks.download.Download
+
+task downloadData(type: Download) {
+    src 'https://github.com/insa-k/marytts-voicebuilding-hvoice/releases/download/voicebuilding-data/voicebuilding-data.zip'
+    dest buildDir
 }
+
+task unpackWav(type: Copy) {
+    from zipTree("$buildDir/voicebuilding-data.zip"), {
+        include '**/wav/*.wav'
+        eachFile {
+            it.path = it.name
+        }
+    }
+    into "$buildDir/wav"
+    includeEmptyDirs = false
+    dependsOn downloadData
+}
+
+task unpackText(type: Copy) {
+    from zipTree("$buildDir/voicebuilding-data.zip"), {
+        include '**/text/*.txt'
+        eachFile {
+            it.path = it.name
+        }
+    }
+    into "$buildDir/text"
+    includeEmptyDirs = false
+    dependsOn downloadData
+}
+
+task unpackTextGrids(type: Copy) {
+    from zipTree("$buildDir/voicebuilding-data.zip"), {
+        include '**/TextGrids/*.TextGrid'
+        eachFile {
+            it.path = it.name
+        }
+    }
+    into "$buildDir/TextGrid"
+    includeEmptyDirs = false
+    dependsOn downloadData
+}
+
 task convertTextGrids {
     ext.labDir = file("$buildDir/lab_old")
     outputs.dir labDir
@@ -62,5 +104,5 @@ task remapLabels(type: Copy) {
 }
 
 legacyInit {
-    dependsOn convertTextGrids, remapLabels
+    dependsOn downloadData, unpackWav, unpackText, unpackTextGrids, convertTextGrids, remapLabels
 }
